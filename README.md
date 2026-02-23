@@ -30,4 +30,6 @@
 点击 <a>https://pjcweb.github.io/compass-and-straightedge-construction/</a>
 
 
-尺规作图 - 让几何作图更精确、更直观 ✨
+尺规作图 - 让几何作图更精确、更直观 ✨ 
+<br/>
+（联系我 1. 743600141@qq.com 2. b站 动画数学微课) 
