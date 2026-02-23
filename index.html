@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>尺规作图工具（已修复吸附/交点）</title>
+    <title>🎯 真·吸附尺规 · 只吸点不吸空气</title>
     <style>
         * {
             margin: 0;
@@ -11,44 +11,53 @@
             box-sizing: border-box;
         }
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #1a1e24;
+            color: #e0e0e0;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1280px;
             margin: 0 auto;
             padding: 20px;
         }
         .header {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: #252b33;
+            padding: 16px 24px;
+            border-radius: 16px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
             margin-bottom: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            border: 1px solid #3a4350;
         }
         .header h1 {
-            font-size: 24px;
-            color: #2c3e50;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #ffd966;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         .header-controls {
             display: flex;
             gap: 10px;
         }
         .header-controls button {
-            padding: 8px 16px;
-            background-color: #3498db;
+            padding: 8px 18px;
+            background-color: #3a4a5c;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 40px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: 1px solid #4f637a;
         }
         .header-controls button:hover {
-            background-color: #2980b9;
+            background-color: #4f637a;
+            transform: translateY(-1px);
         }
         .main-content {
             display: flex;
@@ -56,529 +65,699 @@
             margin-bottom: 20px;
         }
         .toolbar {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            min-width: 200px;
+            background-color: #252b33;
+            padding: 20px 12px;
+            border-radius: 16px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+            min-width: 170px;
+            border: 1px solid #3a4350;
         }
         .toolbar h3 {
-            margin-bottom: 15px;
-            color: #2c3e50;
+            margin-bottom: 16px;
+            color: #ffd966;
+            font-weight: 600;
+            font-size: 1.2rem;
+            padding-left: 8px;
         }
         .tool-btn {
             display: block;
             width: 100%;
-            padding: 10px;
+            padding: 10px 14px;
             margin-bottom: 8px;
-            background-color: #ecf0f1;
-            border: 1px solid #bdc3c7;
-            border-radius: 4px;
+            background-color: #2e3740;
+            border: 1px solid #44515f;
+            border-radius: 30px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 0.95rem;
             text-align: left;
+            font-weight: 500;
+            color: #d0d9e5;
+            transition: all 0.1s;
         }
         .tool-btn:hover {
-            background-color: #d5dbdb;
+            background-color: #3f4b58;
+            border-color: #ffd966;
+            color: white;
         }
         .tool-btn.active {
-            background-color: #3498db;
-            color: white;
-            border-color: #3498db;
+            background-color: #ffd966;
+            color: #1a1e24;
+            border-color: #ffd966;
+            font-weight: 600;
         }
         .canvas-container {
             flex: 1;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            position: relative;
+            background-color: #252b33;
+            padding: 16px;
+            border-radius: 16px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: center;
+            border: 1px solid #3a4350;
         }
         #canvas {
-            border: 1px solid #ddd;
-            background-color: #fafafa;
+            border: 1px solid #44515f;
+            background-color: #1e242b;
             cursor: crosshair;
+            border-radius: 12px;
+            width: 100%;
+            height: auto;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
         }
         .footer {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            text-align: center;
+            background-color: #252b33;
+            padding: 14px 24px;
+            border-radius: 40px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #3a4350;
         }
-        .footer p {
-            font-size: 14px;
-            color: #7f8c8d;
+        .status-bar {
+            padding: 6px 18px;
+            background-color: #1e242b;
+            border-radius: 30px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #ffd966;
+            border: 1px solid #44515f;
+            font-family: monospace;
+        }
+        .legend {
+            display: flex;
+            gap: 20px;
+            color: #a0b0c0;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ffd966;
+            box-shadow: 0 0 8px #ffd966;
         }
     </style>
 </head>
 <body>
 <div class="container">
     <header class="header">
-        <h1>尺规作图工具（吸附/交点已修复）</h1>
+        <h1>🎯 真·吸附尺规 · 只吸点不吸空气</h1>
         <div class="header-controls">
-            <button id="undo-btn">撤销</button>
-            <button id="redo-btn">反撤销</button>
-            <button id="clear-btn">清空画布</button>
-            <button id="save-btn">保存PNG</button>
+            <button id="undo-btn">↩ 撤销</button>
+            <button id="redo-btn">↪ 重做</button>
+            <button id="clear-btn">🗑 清空</button>
+            <button id="save-btn">💾 保存PNG</button>
         </div>
     </header>
     <div class="main-content">
         <div class="toolbar">
-                <h3>工具</h3>
-                <button class="tool-btn active" data-tool="select">选择</button>
-                <button class="tool-btn" data-tool="point">点</button>
-                <button class="tool-btn" data-tool="segment">线段</button>
-                <button class="tool-btn" data-tool="line">直线</button>
-                <button class="tool-btn" data-tool="circle">圆</button>
-                <button class="tool-btn" data-tool="intersection">交点</button>
-            </div>
+            <h3>⚒️ 工具</h3>
+            <button class="tool-btn active" data-tool="select">🔍 选择</button>
+            <button class="tool-btn" data-tool="point">⚫ 点</button>
+            <button class="tool-btn" data-tool="segment">📏 线段</button>
+            <button class="tool-btn" data-tool="line">📈 直线</button>
+            <button class="tool-btn" data-tool="circle">⭕ 圆</button>
+            <button class="tool-btn" data-tool="intersection">✖ 交点</button>
+        </div>
         <div class="canvas-container">
-            <canvas id="canvas" width="900" height="600"></canvas>
+            <canvas id="canvas" width="950" height="600"></canvas>
         </div>
     </div>
     <footer class="footer">
-        <p>鼠标靠近点/线/圆会自动吸附 | 交点工具：依次点击两个图形</p>
+        <div class="legend">
+            <span class="legend-item"><span class="dot"></span> 黄金吸附圈 · 只吸已有的点</span>
+        </div>
+        <div id="status" class="status-bar">👉 选工具开始</div>
     </footer>
 </div>
 
 <script>
-class Point {
-    constructor(x, y, id) {
-        this.x = x;
-        this.y = y;
-        this.id = id || `p_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
-        this.selected = false;
-    }
-    draw(ctx) {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, 4, 0, Math.PI*2);
-        ctx.fillStyle = this.selected ? '#e74c3c' : '#2c3e50';
-        ctx.fill();
-        ctx.strokeStyle = this.selected ? '#e74c3c' : '#2c3e50';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-    }
-    distanceTo(p) {
-        return Math.hypot(this.x-p.x, this.y-p.y);
-    }
-    move(dx, dy) {
-        this.x += dx;
-        this.y += dy;
-    }
-    isNear(x, y, tol=6) {
-        return this.distanceTo({x,y}) < tol;
-    }
-}
+(function() {
+    const statusEl = document.getElementById('status');
+    
+    // 工具名称
+    const toolNames = {
+        'select': '选择',
+        'point': '点',
+        'segment': '线段',
+        'line': '直线',
+        'circle': '圆',
+        'intersection': '交点'
+    };
 
-class Line {
-    constructor(p1, p2, type='segment', id) {
-        this.p1 = p1;
-        this.p2 = p2;
-        this.type = type;
-        this.id = id || `l_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
-        this.selected = false;
-    }
-    draw(ctx) {
-        ctx.beginPath();
-        if (this.type === 'segment') {
-            ctx.moveTo(this.p1.x, this.p1.y);
-            ctx.lineTo(this.p2.x, this.p2.y);
-        } else {
-            const dx = this.p2.x - this.p1.x;
-            const dy = this.p2.y - this.p1.y;
-            const len = Math.hypot(dx, dy);
-            const ux = dx/len, uy = dy/len;
-            ctx.moveTo(this.p1.x - ux*2000, this.p1.y - uy*2000);
-            ctx.lineTo(this.p1.x + ux*2000, this.p1.y + uy*2000);
+    class Point {
+        constructor(x, y, id) {
+            this.x = x;
+            this.y = y;
+            this.id = id || `p_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
+            this.selected = false;
         }
-        ctx.strokeStyle = this.selected ? '#e74c3c' : '#2c3e50';
-        ctx.lineWidth = this.selected ? 3 : 2;
-        ctx.stroke();
-    }
-}
-
-class Circle {
-    constructor(center, radius, id) {
-        this.center = center;
-        this.radius = radius;
-        this.id = id || `c_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
-        this.selected = false;
-    }
-    draw(ctx) {
-        ctx.beginPath();
-        ctx.arc(this.center.x, this.center.y, this.radius, 0, Math.PI*2);
-        ctx.strokeStyle = this.selected ? '#e74c3c' : '#2c3e50';
-        ctx.lineWidth = this.selected ? 3 : 2;
-        ctx.stroke();
-    }
-}
-
-class GeometryCanvas {
-    constructor(canvasId) {
-        this.cvs = document.getElementById(canvasId);
-        this.ctx = this.cvs.getContext('2d');
-        this.elements = [];
-        this.tool = 'select';
-        this.selected = [];
-        this.temp = null;
-        this.stack = [];
-        this.redoStack = [];
-        this.snapTol = 20;
-        this.snapPoint = null;
-        this.hoverPoint = null;
-        this.init();
+        draw(ctx) {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 5, 0, 2*Math.PI);
+            ctx.fillStyle = this.selected ? '#ff8a7a' : '#ffd966';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            
+            // 发光效果
+            ctx.shadowColor = '#ffd966';
+            ctx.shadowBlur = 8;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        distanceTo(p) {
+            return Math.hypot(this.x - p.x, this.y - p.y);
+        }
+        isNear(x, y, tol = 8) {
+            return this.distanceTo({x, y}) < tol;
+        }
     }
 
-    init() {
-        this.bindEvents();
-        this.save();
-        this.render();
+    class Line {
+        constructor(p1, p2, type = 'segment', id) {
+            this.p1 = p1;
+            this.p2 = p2;
+            this.type = type;
+            this.id = id || `l_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
+            this.selected = false;
+        }
+        draw(ctx) {
+            ctx.beginPath();
+            if (this.type === 'segment') {
+                ctx.moveTo(this.p1.x, this.p1.y);
+                ctx.lineTo(this.p2.x, this.p2.y);
+            } else {
+                const dx = this.p2.x - this.p1.x;
+                const dy = this.p2.y - this.p1.y;
+                const len = Math.hypot(dx, dy);
+                if (len < 1e-9) return;
+                const ux = dx / len;
+                const uy = dy / len;
+                ctx.moveTo(this.p1.x - ux * 3000, this.p1.y - uy * 3000);
+                ctx.lineTo(this.p1.x + ux * 3000, this.p1.y + uy * 3000);
+            }
+            ctx.strokeStyle = this.selected ? '#ff8a7a' : '#7a8b9f';
+            ctx.lineWidth = this.selected ? 3.5 : 2.2;
+            ctx.stroke();
+        }
     }
 
-    save() {
-        const state = this.elements.map(e => {
-            if (e instanceof Point) {
-                return {
-                    type: 'Point',
-                    x: e.x,
-                    y: e.y,
-                    id: e.id
-                };
-            } else if (e instanceof Line) {
-                return {
-                    type: 'Line',
-                    p1id: e.p1.id,
-                    p2id: e.p2.id,
-                    lineType: e.type,
-                    id: e.id
-                };
-            } else if (e instanceof Circle) {
-                return {
-                    type: 'Circle',
-                    centerid: e.center.id,
-                    radius: e.radius,
-                    id: e.id
-                };
+    class Circle {
+        constructor(center, radius, id) {
+            this.center = center;
+            this.radius = radius;
+            this.id = id || `c_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
+            this.selected = false;
+        }
+        draw(ctx) {
+            ctx.beginPath();
+            ctx.arc(this.center.x, this.center.y, this.radius, 0, 2*Math.PI);
+            ctx.strokeStyle = this.selected ? '#ff8a7a' : '#7a8b9f';
+            ctx.lineWidth = this.selected ? 3.5 : 2.2;
+            ctx.stroke();
+        }
+    }
+
+    // ========== 核心：真正的点吸附 ==========
+    class GeometryCanvas {
+        constructor(canvasId) {
+            this.cvs = document.getElementById(canvasId);
+            this.ctx = this.cvs.getContext('2d');
+            this.elements = [];
+            this.tool = 'select';
+            this.temp = null;
+            this.stack = [];
+            this.redoStack = [];
+
+            // 吸附只针对已有的点
+            this.snapTol = 15;        // 吸附距离
+            this.snapPoint = null;     // 当前吸附到的点（只有真正的点）
+            
+            this.intersectCache = { a: null, b: null };
+
+            this.init();
+        }
+
+        init() {
+            this.bindEvents();
+            this.saveInitialState();
+            this.render();
+            this.updateStatus('👆 选择工具');
+        }
+
+        updateStatus(msg) {
+            statusEl.textContent = `👉 ${msg}`;
+        }
+
+        saveState() {
+            const state = this.elements.map(el => {
+                if (el instanceof Point) {
+                    return { type: 'Point', x: el.x, y: el.y, id: el.id };
+                } else if (el instanceof Line) {
+                    return {
+                        type: 'Line',
+                        p1id: el.p1.id,
+                        p2id: el.p2.id,
+                        lineType: el.type,
+                        id: el.id
+                    };
+                } else if (el instanceof Circle) {
+                    return { type: 'Circle', centerid: el.center.id, radius: el.radius, id: el.id };
+                }
+                return null;
+            }).filter(Boolean);
+            this.stack.push(JSON.parse(JSON.stringify(state)));
+            this.redoStack = [];
+            if (this.stack.length > 40) this.stack.shift();
+        }
+
+        saveInitialState() {
+            this.saveState();
+        }
+
+        undo() {
+            if (this.stack.length < 2) return;
+            this.redoStack.push(this.stack.pop());
+            this.loadState(this.stack[this.stack.length - 1]);
+            this.updateStatus('撤销');
+        }
+
+        redo() {
+            if (this.redoStack.length === 0) return;
+            const state = this.redoStack.pop();
+            this.stack.push(state);
+            this.loadState(state);
+            this.updateStatus('重做');
+        }
+
+        loadState(state) {
+            const pointMap = new Map();
+            this.elements = [];
+
+            state.forEach(item => {
+                if (item.type === 'Point') {
+                    const p = new Point(item.x, item.y, item.id);
+                    pointMap.set(p.id, p);
+                    this.elements.push(p);
+                }
+            });
+            state.forEach(item => {
+                if (item.type === 'Line') {
+                    const p1 = pointMap.get(item.p1id);
+                    const p2 = pointMap.get(item.p2id);
+                    if (p1 && p2) {
+                        this.elements.push(new Line(p1, p2, item.lineType, item.id));
+                    }
+                } else if (item.type === 'Circle') {
+                    const center = pointMap.get(item.centerid);
+                    if (center) {
+                        this.elements.push(new Circle(center, item.radius, item.id));
+                    }
+                }
+            });
+            this.temp = null;
+            this.intersectCache = { a: null, b: null };
+            this.render();
+        }
+
+        getMouse(e) {
+            const rect = this.cvs.getBoundingClientRect();
+            const scaleX = this.cvs.width / rect.width;
+            const scaleY = this.cvs.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        // ========== 只吸附真正的点 ==========
+        getSnapPoint(x, y) {
+            let bestDist = this.snapTol;
+            let bestPoint = null;
+
+            for (let el of this.elements) {
+                if (el instanceof Point) {
+                    const d = Math.hypot(el.x - x, el.y - y);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        bestPoint = el;      // 只返回真正的点对象
+                    }
+                }
+            }
+            return bestPoint;
+        }
+
+        // 获取鼠标下的实体
+        getElementUnderMouse(x, y) {
+            for (let i = this.elements.length - 1; i >= 0; i--) {
+                const el = this.elements[i];
+                if (el instanceof Point && el.isNear(x, y, 8)) return el;
+                if (el instanceof Line) {
+                    const A = el.p1, B = el.p2;
+                    const ax = x - A.x, ay = y - A.y;
+                    const bx = B.x - A.x, by = B.y - A.y;
+                    const len2 = bx * bx + by * by;
+                    if (len2 < 1e-12) continue;
+                    let t = (ax * bx + ay * by) / len2;
+                    if (el.type === 'segment') t = Math.max(0, Math.min(1, t));
+                    const projX = A.x + t * bx;
+                    const projY = A.y + t * by;
+                    if (Math.hypot(projX - x, projY - y) < 8) return el;
+                }
+                if (el instanceof Circle) {
+                    const d = Math.hypot(x - el.center.x, y - el.center.y);
+                    if (Math.abs(d - el.radius) < 8) return el;
+                }
             }
             return null;
-        }).filter(Boolean);
-        
-        this.stack.push(JSON.parse(JSON.stringify(state)));
-        this.redoStack = [];
-        if (this.stack.length > 30) {
-            this.stack.shift();
         }
-    }
 
-    undo() {
-        if (this.stack.length < 2) return;
-        this.redoStack.push(this.stack.pop());
-        this.loadState(this.stack[this.stack.length - 1]);
-    }
+        bindEvents() {
+            this.cvs.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return;
+                const mouse = this.getMouse(e);
+                
+                // 只吸附真正的点
+                const snapPoint = this.getSnapPoint(mouse.x, mouse.y);
+                const useX = snapPoint ? snapPoint.x : mouse.x;
+                const useY = snapPoint ? snapPoint.y : mouse.y;
+                const snapMsg = snapPoint ? '吸附到点' : '';
 
-    redo() {
-        if (this.redoStack.length === 0) return;
-        const state = this.redoStack.pop();
-        this.stack.push(state);
-        this.loadState(state);
-    }
+                const targetElem = this.getElementUnderMouse(useX, useY);
 
-    loadState(state) {
-        const pointsMap = new Map();
-        this.elements = [];
-        
-        // 先创建所有点
-        state.forEach(item => {
-            if (item.type === 'Point') {
-                const point = new Point(item.x, item.y, item.id);
-                pointsMap.set(point.id, point);
-                this.elements.push(point);
-            }
-        });
-        
-        // 再创建线和圆
-        state.forEach(item => {
-            if (item.type === 'Line') {
-                const p1 = pointsMap.get(item.p1id);
-                const p2 = pointsMap.get(item.p2id);
-                if (p1 && p2) {
-                    const line = new Line(p1, p2, item.lineType || 'segment', item.id);
-                    this.elements.push(line);
+                switch(this.tool) {
+                    case 'point':
+                        this.elements.push(new Point(useX, useY));
+                        this.saveState();
+                        this.updateStatus(`${snapMsg} 添加点`);
+                        break;
+                        
+                    case 'segment':
+                    case 'line':
+                        if (!this.temp) {
+                            const p1 = new Point(useX, useY);
+                            this.elements.push(p1);
+                            this.temp = { p1: p1, p2: new Point(useX, useY) };
+                            this.updateStatus(`${snapMsg} 第一个点`);
+                        } else {
+                            const p2 = new Point(useX, useY);
+                            this.elements.push(p2);
+                            this.elements.push(new Line(this.temp.p1, p2, this.tool));
+                            this.temp = null;
+                            this.saveState();
+                            this.updateStatus(`${snapMsg} 完成${this.tool === 'segment' ? '线段' : '直线'}`);
+                        }
+                        break;
+                        
+                    case 'circle':
+                        if (!this.temp) {
+                            const center = new Point(useX, useY);
+                            this.elements.push(center);
+                            this.temp = { center: center, radius: 0 };
+                            this.updateStatus(`${snapMsg} 圆心，再点半径`);
+                        } else {
+                            // 半径也支持吸附到点
+                            const r = this.temp.center.distanceTo({ x: useX, y: useY });
+                            if (r > 1) {
+                                this.elements.push(new Circle(this.temp.center, r));
+                                this.updateStatus(`${snapMsg} 圆完成 (r=${r.toFixed(1)})`);
+                            } else {
+                                this.updateStatus(`半径太小，取消`);
+                            }
+                            this.temp = null;
+                            this.saveState();
+                        }
+                        break;
+                        
+                    case 'intersection':
+                        if (!this.intersectCache.a) {
+                            this.intersectCache.a = targetElem;
+                            if (targetElem) {
+                                const type = targetElem instanceof Line ? '线' : '圆';
+                                this.updateStatus(`已选第一个${type}，再选第二个`);
+                            } else {
+                                this.updateStatus(`请点击一个图形`);
+                            }
+                        } else if (!this.intersectCache.b && targetElem && targetElem !== this.intersectCache.a) {
+                            this.intersectCache.b = targetElem;
+                            this.computeAndAddIntersection(this.intersectCache.a, this.intersectCache.b);
+                            this.intersectCache.a = null;
+                            this.intersectCache.b = null;
+                        } else {
+                            if (!targetElem) {
+                                this.intersectCache.a = null;
+                                this.updateStatus(`取消选择`);
+                            }
+                        }
+                        break;
                 }
-            } else if (item.type === 'Circle') {
-                const center = pointsMap.get(item.centerid);
-                if (center) {
-                    const circle = new Circle(center, item.radius, item.id);
-                    this.elements.push(circle);
+                
+                this.render();
+            });
+
+            this.cvs.addEventListener('mousemove', (e) => {
+                const mouse = this.getMouse(e);
+                
+                // 只吸附真正的点
+                this.snapPoint = this.getSnapPoint(mouse.x, mouse.y);
+                
+                // 预览用坐标
+                const previewSnap = this.getSnapPoint(mouse.x, mouse.y);
+                const previewX = previewSnap ? previewSnap.x : mouse.x;
+                const previewY = previewSnap ? previewSnap.y : mouse.y;
+
+                if (this.temp) {
+                    if (this.temp.p2) {
+                        this.temp.p2.x = previewX;
+                        this.temp.p2.y = previewY;
+                    } else if (this.temp.center) {
+                        this.temp.radius = this.temp.center.distanceTo({ x: previewX, y: previewY });
+                    }
                 }
-            }
-        });
-        
-        this.render();
-    }
+                
+                this.render();
+            });
 
-    getMouse(e) {
-        const r = this.cvs.getBoundingClientRect();
-        return {
-            x: e.clientX - r.left,
-            y: e.clientY - r.top
-        };
-    }
+            this.cvs.addEventListener('mouseleave', () => {
+                this.snapPoint = null;
+                this.render();
+            });
 
-    getSnapPoint(x, y) {
-        let best = null;
-        let minDist = this.snapTol;
-        const mp = new Point(x,y);
-        this.elements.forEach(e => {
-            if (e instanceof Point) {
-                const d = e.distanceTo(mp);
-                if (d < minDist) { minDist = d; best = e; }
-            }
-            if (e instanceof Line) {
-                const proj = this.projectOnLine(mp, e);
-                const d = mp.distanceTo(proj);
-                if (d < minDist) { minDist = d; best = proj; }
-            }
-            if (e instanceof Circle) {
-                const d = Math.abs(mp.distanceTo(e.center) - e.radius);
-                if (d < minDist) {
-                    minDist = d;
-                    const angle = Math.atan2(mp.y-e.center.y, mp.x-e.center.x);
-                    best = new Point(
-                        e.center.x + e.radius*Math.cos(angle),
-                        e.center.y + e.radius*Math.sin(angle)
-                    );
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.tool = btn.dataset.tool;
+                    this.temp = null;
+                    this.intersectCache = { a: null, b: null };
+                    
+                    this.updateStatus(`切换到 ${toolNames[this.tool] || this.tool}`);
+                    this.render();
+                });
+            });
+
+            document.getElementById('undo-btn').addEventListener('click', () => this.undo());
+            document.getElementById('redo-btn').addEventListener('click', () => this.redo());
+            document.getElementById('clear-btn').addEventListener('click', () => {
+                if (confirm('清空？')) {
+                    this.elements = [];
+                    this.temp = null;
+                    this.intersectCache = { a: null, b: null };
+                    this.saveState();
+                    this.render();
+                    this.updateStatus('已清空');
                 }
-            }
-        });
-        return best;
-    }
+            });
+            document.getElementById('save-btn').addEventListener('click', () => {
+                const link = document.createElement('a');
+                link.download = `尺规_${Date.now()}.png`;
+                link.href = this.cvs.toDataURL('image/png');
+                link.click();
+                this.updateStatus('图片已保存');
+            });
 
-    projectOnLine(p, line) {
-        const A = line.p1, B = line.p2;
-        const ax = p.x-A.x, ay = p.y-A.y;
-        const bx = B.x-A.x, by = B.y-A.y;
-        const t = Math.max(0, Math.min(1, (ax*bx + ay*by)/(bx*bx+by*by)));
-        return new Point(A.x + t*bx, A.y + t*by);
-    }
-
-    getElementAt(x,y) {
-        for(let i=this.elements.length-1; i>=0; i--){
-            const e = this.elements[i];
-            if (e instanceof Point && e.isNear(x,y)) return e;
-            if (e instanceof Line) {
-                const proj = this.projectOnLine(new Point(x,y),e);
-                if (proj.distanceTo({x,y}) < 6) return e;
-            }
-            if (e instanceof Circle) {
-                const d = Math.hypot(x-e.center.x, y-e.center.y);
-                if (Math.abs(d - e.radius) < 6) return e;
-            }
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'z') {
+                    e.preventDefault();
+                    this.undo();
+                }
+                if (e.ctrlKey && e.key === 'y') {
+                    e.preventDefault();
+                    this.redo();
+                }
+            });
         }
-        return null;
-    }
 
-    bindEvents() {
-        this.cvs.addEventListener('mousedown', e=>{
-            if (e.button!==0) return;
-            const m = this.getMouse(e);
-            this.snapPoint = this.getSnapPoint(m.x, m.y);
-            const sx = this.snapPoint?.x ?? m.x;
-            const sy = this.snapPoint?.y ?? m.y;
-            const elem = this.getElementAt(sx, sy);
+        computeAndAddIntersection(a, b) {
+            if (!a || !b) return;
+            let points = [];
 
-            switch(this.tool){
-                case 'point':
-                    this.elements.push(new Point(sx,sy));
-                    this.save();
-                    break;
-                case 'segment':
-                case 'line':
-                    if (!this.temp) {
-                        const p = new Point(sx,sy);
-                        this.elements.push(p);
-                        this.temp = {p1:p, p2:new Point(sx,sy), type:this.tool};
-                    } else {
-                        const p2 = new Point(sx,sy);
-                        this.elements.push(p2);
-                        this.elements.push(new Line(this.temp.p1,p2,this.tool));
-                        this.temp = null;
-                        this.save();
-                    }
-                    break;
-                case 'circle':
-                    if (!this.temp) {
-                        const c = new Point(sx,sy);
-                        this.elements.push(c);
-                        this.temp = {center:c, r:0};
-                    } else {
-                        const r = this.temp.center.distanceTo({x:sx,y:sy});
-                        this.elements.push(new Circle(this.temp.center, r));
-                        this.temp = null;
-                        this.save();
-                    }
-                    break;
-                case 'intersection':
-                    if (!this.temp) this.temp = {a:null,b:null};
-                    if (!this.temp.a) this.temp.a = elem;
-                    else if (!this.temp.b) {
-                        this.temp.b = elem;
-                        this.computeIntersection(this.temp.a, this.temp.b);
-                        this.temp = null;
-                    }
-                    break;
+            if (a instanceof Line && b instanceof Line) points = this.intersectLineLine(a, b);
+            else if (a instanceof Line && b instanceof Circle) points = this.intersectLineCircle(a, b);
+            else if (a instanceof Circle && b instanceof Line) points = this.intersectLineCircle(b, a);
+            else if (a instanceof Circle && b instanceof Circle) points = this.intersectCircleCircle(a, b);
 
+            let added = 0;
+            points.forEach(p => {
+                const exists = this.elements.some(el => el instanceof Point && el.distanceTo(p) < 2);
+                if (!exists && isFinite(p.x) && isFinite(p.y)) {
+                    this.elements.push(new Point(p.x, p.y));
+                    added++;
+                }
+            });
+
+            if (added > 0) {
+                this.saveState();
+                this.updateStatus(`添加 ${added} 个交点`);
             }
             this.render();
-        });
+        }
 
-        this.cvs.addEventListener('mousemove', e=>{
-            const m = this.getMouse(e);
-            this.snapPoint = this.getSnapPoint(m.x, m.y);
-            const sx = this.snapPoint?.x ?? m.x;
-            const sy = this.snapPoint?.y ?? m.y;
+        intersectLineLine(l1, l2) {
+            const A = l1.p1, B = l1.p2;
+            const C = l2.p1, D = l2.p2;
+            const den = (B.x - A.x) * (D.y - C.y) - (B.y - A.y) * (D.x - C.x);
+            if (Math.abs(den) < 1e-10) return [];
+            const t = ((C.x - A.x) * (D.y - C.y) - (C.y - A.y) * (D.x - C.x)) / den;
+            const x = A.x + t * (B.x - A.x);
+            const y = A.y + t * (B.y - A.y);
+            return [new Point(x, y)];
+        }
 
-            if (this.temp) {
-                if (this.temp.p2) {
-                    this.temp.p2.x = sx;
-                    this.temp.p2.y = sy;
-                }
-                if (this.temp.center) {
-                    this.temp.r = this.temp.center.distanceTo({x:sx,y:sy});
-                }
-            }
-            this.render();
-        });
+        intersectLineCircle(L, C) {
+            const A = L.p1, B = L.p2;
+            const O = C.center, r = C.radius;
+            const dx = B.x - A.x, dy = B.y - A.y;
+            const fx = A.x - O.x, fy = A.y - O.y;
 
-        this.cvs.addEventListener('mouseup', ()=>{
-        });
+            const a = dx * dx + dy * dy;
+            const b = 2 * (fx * dx + fy * dy);
+            const c = fx * fx + fy * fy - r * r;
+            const disc = b * b - 4 * a * c;
+            if (disc < -1e-12) return [];
+            if (Math.abs(a) < 1e-12) return [];
 
-        document.querySelectorAll('.tool-btn').forEach(b=>{
-            b.onclick = ()=>{
-                document.querySelectorAll('.tool-btn').forEach(x=>x.classList.remove('active'));
-                b.classList.add('active');
-                this.tool = b.dataset.tool;
-                this.temp = null;
-                this.selected = [];
-                this.render();
-            }
-        });
+            const sqrtDisc = Math.sqrt(Math.max(0, disc));
+            const t1 = (-b - sqrtDisc) / (2 * a);
+            const t2 = (-b + sqrtDisc) / (2 * a);
 
-        document.getElementById('undo-btn').onclick = ()=>this.undo();
-        document.getElementById('redo-btn').onclick = ()=>this.redo();
-        document.getElementById('clear-btn').onclick = ()=>{
-            if(confirm('清空？')){
-                this.elements = [];
-                this.temp = null;
-                this.save();
-                this.render();
-            }
-        };
-        document.getElementById('save-btn').onclick = ()=>{
-            const a = document.createElement('a');
-            a.download = '尺规作图_'+Date.now()+'.png';
-            a.href = this.cvs.toDataURL('image/png');
-            a.click();
-        };
+            const p1 = new Point(A.x + t1 * dx, A.y + t1 * dy);
+            const p2 = new Point(A.x + t2 * dx, A.y + t2 * dy);
+            return [p1, p2];
+        }
 
-        document.addEventListener('keydown', e=>{
-            if(e.ctrlKey && e.key==='z'){ e.preventDefault(); this.undo(); }
-            if(e.ctrlKey && e.key==='y'){ e.preventDefault(); this.redo(); }
-        });
-    }
+        intersectCircleCircle(C1, C2) {
+            const O1 = C1.center, O2 = C2.center;
+            const r1 = C1.radius, r2 = C2.radius;
+            const dx = O2.x - O1.x, dy = O2.y - O1.y;
+            const d = Math.hypot(dx, dy);
+            if (d > r1 + r2 || d < Math.abs(r1 - r2) || d < 1e-10) return [];
 
-    computeIntersection(a,b) {
-        let pts = [];
-        if (a instanceof Line && b instanceof Line) pts = this.lineLine(a,b);
-        if (a instanceof Line && b instanceof Circle) pts = this.lineCircle(a,b);
-        if (a instanceof Circle && b instanceof Line) pts = this.lineCircle(b,a);
-        if (a instanceof Circle && b instanceof Circle) pts = this.circleCircle(a,b);
-        pts.forEach(p=>{
-            if (!this.elements.some(e=>e instanceof Point && e.distanceTo(p)<3)) {
-                this.elements.push(new Point(p.x,p.y));
-            }
-        });
-        this.save();
-        this.render();
-    }
+            const a = (r1 * r1 - r2 * r2 + d * d) / (2 * d);
+            const h2 = r1 * r1 - a * a;
+            if (h2 < -1e-10) return [];
+            const h = Math.sqrt(Math.max(0, h2));
 
-    lineLine(l1,l2) {
-        const A=l1.p1,B=l1.p2,C=l2.p1,D=l2.p2;
-        const den = (B.x-A.x)*(D.y-C.y) - (B.y-A.y)*(D.x-C.x);
-        if (Math.abs(den)<1e-6) return [];
-        const t = ((C.x-A.x)*(D.y-C.y) - (C.y-A.y)*(D.x-C.x))/den;
-        const x = A.x + t*(B.x-A.x);
-        const y = A.y + t*(B.y-A.y);
-        return [new Point(x,y)];
-    }
+            const xm = O1.x + a * dx / d;
+            const ym = O1.y + a * dy / d;
 
-    lineCircle(l,c) {
-        const A=l.p1,B=l.p2,O=c.center,r=c.radius;
-        const ax=A.x-O.x, ay=A.y-O.y;
-        const bx=B.x-A.x, by=B.y-A.y;
-        const a=bx*bx+by*by;
-        const b=2*(ax*bx+ay*by);
-        const cc=ax*ax+ay*ay-r*r;
-        const D=b*b-4*a*cc;
-        if (D<0) return [];
-        const t1=(-b-Math.sqrt(D))/(2*a);
-        const t2=(-b+Math.sqrt(D))/(2*a);
-        return [
-            new Point(A.x+t1*bx, A.y+t1*by),
-            new Point(A.x+t2*bx, A.y+t2*by)
-        ];
-    }
+            const rx = -dy * h / d;
+            const ry = dx * h / d;
+            return [
+                new Point(xm + rx, ym + ry),
+                new Point(xm - rx, ym - ry)
+            ];
+        }
 
-    circleCircle(c1,c2) {
-        const O1=c1.center,O2=c2.center,r1=c1.radius,r2=c2.radius;
-        const dx=O2.x-O1.x, dy=O2.y-O1.y;
-        const d=Math.hypot(dx,dy);
-        if (d>r1+r2 || d<Math.abs(r1-r2) || d<1e-6) return [];
-        const a=(r1*r1 - r2*r2 + d*d)/(2*d);
-        const h=Math.sqrt(r1*r1 - a*a);
-        const xm=O1.x + a*dx/d;
-        const ym=O1.y + a*dy/d;
-        const rx=-dy*h/d, ry=dx*h/d;
-        return [
-            new Point(xm+rx, ym+ry),
-            new Point(xm-rx, ym-ry)
-        ];
-    }
+        render() {
+            this.ctx.clearRect(0, 0, this.cvs.width, this.cvs.height);
 
-    render() {
-        this.ctx.clearRect(0,0,this.cvs.width,this.cvs.height);
-        this.elements.forEach(e=>e.draw(this.ctx));
-        if (this.snapPoint) {
+            // 暗色网格
             this.ctx.beginPath();
-            this.ctx.arc(this.snapPoint.x,this.snapPoint.y,8,0,Math.PI*2);
-            this.ctx.strokeStyle='#3498db';
-            this.ctx.lineWidth=2;
-            this.ctx.setLineDash([3,3]);
-            this.ctx.stroke();
-            this.ctx.setLineDash([]);
-        }
-        if (this.temp) {
-            this.ctx.strokeStyle='#95a5a6';
-            this.ctx.lineWidth=2;
-            if (this.temp.p1 && this.temp.p2) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(this.temp.p1.x,this.temp.p1.y);
-                this.ctx.lineTo(this.temp.p2.x,this.temp.p2.y);
-                this.ctx.stroke();
+            this.ctx.strokeStyle = '#2a323c';
+            this.ctx.lineWidth = 0.5;
+            for (let i = 0; i < this.cvs.width; i += 30) {
+                this.ctx.moveTo(i, 0);
+                this.ctx.lineTo(i, this.cvs.height);
             }
-            if (this.temp.center && this.temp.r>0) {
+            for (let i = 0; i < this.cvs.height; i += 30) {
+                this.ctx.moveTo(0, i);
+                this.ctx.lineTo(this.cvs.width, i);
+            }
+            this.ctx.stroke();
+
+            // 绘制所有元素
+            this.elements.forEach(el => el.draw(this.ctx));
+
+            // 绘制吸附提示（只对真正的点）
+            if (this.snapPoint) {
                 this.ctx.beginPath();
-                this.ctx.arc(this.temp.center.x,this.temp.center.y,this.temp.r,0,Math.PI*2);
+                this.ctx.arc(this.snapPoint.x, this.snapPoint.y, 12, 0, 2*Math.PI);
+                this.ctx.strokeStyle = '#ffd966';
+                this.ctx.lineWidth = 3;
+                this.ctx.setLineDash([5, 3]);
                 this.ctx.stroke();
+                
+                // 内圈
+                this.ctx.beginPath();
+                this.ctx.arc(this.snapPoint.x, this.snapPoint.y, 5, 0, 2*Math.PI);
+                this.ctx.strokeStyle = '#ffd966';
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([]);
+                this.ctx.stroke();
+                
+                this.ctx.setLineDash([]);
+            }
+
+            // 临时预览
+            if (this.temp) {
+                this.ctx.beginPath();
+                this.ctx.strokeStyle = '#ffd966';
+                this.ctx.lineWidth = 2.5;
+                this.ctx.setLineDash([8, 5]);
+                
+                if (this.temp.p1 && this.temp.p2) {
+                    this.ctx.moveTo(this.temp.p1.x, this.temp.p1.y);
+                    this.ctx.lineTo(this.temp.p2.x, this.temp.p2.y);
+                    this.ctx.stroke();
+                } else if (this.temp.center && this.temp.radius > 0) {
+                    this.ctx.arc(this.temp.center.x, this.temp.center.y, this.temp.radius, 0, 2*Math.PI);
+                    this.ctx.stroke();
+                }
+                this.ctx.setLineDash([]);
+            }
+
+            // 交点选择提示
+            if (this.tool === 'intersection' && this.intersectCache.a) {
+                this.ctx.beginPath();
+                this.ctx.strokeStyle = '#ff8a7a';
+                this.ctx.lineWidth = 4;
+                this.ctx.setLineDash([8, 4]);
+                
+                const a = this.intersectCache.a;
+                if (a instanceof Line) {
+                    this.ctx.moveTo(a.p1.x, a.p1.y);
+                    this.ctx.lineTo(a.p2.x, a.p2.y);
+                } else if (a instanceof Circle) {
+                    this.ctx.arc(a.center.x, a.center.y, a.radius, 0, 2*Math.PI);
+                }
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
             }
         }
     }
-}
 
-window.addEventListener('DOMContentLoaded', () => {
-    new GeometryCanvas('canvas');
-});
+    window.addEventListener('DOMContentLoaded', () => {
+        new GeometryCanvas('canvas');
+    });
+})();
 </script>
 </body>
 </html>
