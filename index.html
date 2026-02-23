@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎯 真·吸附尺规 · 只吸点不吸空气</title>
+    <title>尺规作题工具</title>
     <style>
         * {
             margin: 0;
@@ -112,17 +112,24 @@
             border-radius: 16px;
             box-shadow: 0 6px 12px rgba(0,0,0,0.2);
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             border: 1px solid #3a4350;
         }
-        #canvas {
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            overflow: hidden;
+            border-radius: 12px;
+            background-color: #1e242b;
             border: 1px solid #44515f;
+        }
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
             background-color: #1e242b;
             cursor: crosshair;
-            border-radius: 12px;
-            width: 100%;
-            height: auto;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
         }
         .footer {
             background-color: #252b33;
@@ -130,7 +137,7 @@
             border-radius: 40px;
             box-shadow: 0 6px 12px rgba(0,0,0,0.2);
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             border: 1px solid #3a4350;
         }
@@ -143,30 +150,14 @@
             color: #ffd966;
             border: 1px solid #44515f;
             font-family: monospace;
-        }
-        .legend {
-            display: flex;
-            gap: 20px;
-            color: #a0b0c0;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #ffd966;
-            box-shadow: 0 0 8px #ffd966;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 <div class="container">
     <header class="header">
-        <h1>🎯 真·吸附尺规 · 只吸点不吸空气</h1>
+        <h1>尺规作题工具</h1>
         <div class="header-controls">
             <button id="undo-btn">↩ 撤销</button>
             <button id="redo-btn">↪ 重做</button>
@@ -177,21 +168,20 @@
     <div class="main-content">
         <div class="toolbar">
             <h3>⚒️ 工具</h3>
-            <button class="tool-btn active" data-tool="select">🔍 选择</button>
-            <button class="tool-btn" data-tool="point">⚫ 点</button>
+            <button class="tool-btn active" data-tool="point">⚫ 点</button>
             <button class="tool-btn" data-tool="segment">📏 线段</button>
             <button class="tool-btn" data-tool="line">📈 直线</button>
             <button class="tool-btn" data-tool="circle">⭕ 圆</button>
             <button class="tool-btn" data-tool="intersection">✖ 交点</button>
+            <button class="tool-btn" data-tool="delete">🗑️ 删除</button>
         </div>
         <div class="canvas-container">
-            <canvas id="canvas" width="950" height="600"></canvas>
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <canvas id="canvas" width="1200" height="800"></canvas>
+            </div>
         </div>
     </div>
     <footer class="footer">
-        <div class="legend">
-            <span class="legend-item"><span class="dot"></span> 黄金吸附圈 · 只吸已有的点</span>
-        </div>
         <div id="status" class="status-bar">👉 选工具开始</div>
     </footer>
 </div>
@@ -200,14 +190,13 @@
 (function() {
     const statusEl = document.getElementById('status');
     
-    // 工具名称
     const toolNames = {
-        'select': '选择',
         'point': '点',
         'segment': '线段',
         'line': '直线',
         'circle': '圆',
-        'intersection': '交点'
+        'intersection': '交点',
+        'delete': '删除'
     };
 
     class Point {
@@ -215,22 +204,15 @@
             this.x = x;
             this.y = y;
             this.id = id || `p_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
-            this.selected = false;
         }
         draw(ctx) {
             ctx.beginPath();
             ctx.arc(this.x, this.y, 5, 0, 2*Math.PI);
-            ctx.fillStyle = this.selected ? '#ff8a7a' : '#ffd966';
+            ctx.fillStyle = '#ffd966';
             ctx.fill();
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 1.5;
             ctx.stroke();
-            
-            // 发光效果
-            ctx.shadowColor = '#ffd966';
-            ctx.shadowBlur = 8;
-            ctx.fill();
-            ctx.shadowBlur = 0;
         }
         distanceTo(p) {
             return Math.hypot(this.x - p.x, this.y - p.y);
@@ -246,7 +228,6 @@
             this.p2 = p2;
             this.type = type;
             this.id = id || `l_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
-            this.selected = false;
         }
         draw(ctx) {
             ctx.beginPath();
@@ -258,13 +239,16 @@
                 const dy = this.p2.y - this.p1.y;
                 const len = Math.hypot(dx, dy);
                 if (len < 1e-9) return;
+                
+                const canvasSize = 2000;
                 const ux = dx / len;
                 const uy = dy / len;
-                ctx.moveTo(this.p1.x - ux * 3000, this.p1.y - uy * 3000);
-                ctx.lineTo(this.p1.x + ux * 3000, this.p1.y + uy * 3000);
+                
+                ctx.moveTo(this.p1.x - ux * canvasSize, this.p1.y - uy * canvasSize);
+                ctx.lineTo(this.p1.x + ux * canvasSize, this.p1.y + uy * canvasSize);
             }
-            ctx.strokeStyle = this.selected ? '#ff8a7a' : '#7a8b9f';
-            ctx.lineWidth = this.selected ? 3.5 : 2.2;
+            ctx.strokeStyle = '#7a8b9f';
+            ctx.lineWidth = 2.2;
             ctx.stroke();
         }
     }
@@ -274,34 +258,30 @@
             this.center = center;
             this.radius = radius;
             this.id = id || `c_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
-            this.selected = false;
         }
         draw(ctx) {
             ctx.beginPath();
             ctx.arc(this.center.x, this.center.y, this.radius, 0, 2*Math.PI);
-            ctx.strokeStyle = this.selected ? '#ff8a7a' : '#7a8b9f';
-            ctx.lineWidth = this.selected ? 3.5 : 2.2;
+            ctx.strokeStyle = '#7a8b9f';
+            ctx.lineWidth = 2.2;
             ctx.stroke();
         }
     }
 
-    // ========== 核心：真正的点吸附 ==========
     class GeometryCanvas {
         constructor(canvasId) {
             this.cvs = document.getElementById(canvasId);
             this.ctx = this.cvs.getContext('2d');
+            this.wrapper = document.getElementById('canvasWrapper');
             this.elements = [];
-            this.tool = 'select';
+            this.tool = 'point';
             this.temp = null;
             this.stack = [];
             this.redoStack = [];
-
-            // 吸附只针对已有的点
-            this.snapTol = 15;        // 吸附距离
-            this.snapPoint = null;     // 当前吸附到的点（只有真正的点）
-            
+            this.snapTol = 15;
+            this.snapPoint = null;
             this.intersectCache = { a: null, b: null };
-
+            
             this.init();
         }
 
@@ -309,11 +289,61 @@
             this.bindEvents();
             this.saveInitialState();
             this.render();
-            this.updateStatus('👆 选择工具');
+            this.updateStatus('👆 选工具开始');
         }
 
         updateStatus(msg) {
             statusEl.textContent = `👉 ${msg}`;
+        }
+
+        getMouse(e) {
+            const rect = this.cvs.getBoundingClientRect();
+            const scaleX = this.cvs.width / rect.width;
+            const scaleY = this.cvs.height / rect.height;
+            
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        getSnapPoint(x, y) {
+            let bestDist = this.snapTol;
+            let bestPoint = null;
+            for (let el of this.elements) {
+                if (el instanceof Point) {
+                    const d = Math.hypot(el.x - x, el.y - y);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        bestPoint = el;
+                    }
+                }
+            }
+            return bestPoint;
+        }
+
+        getElementUnderMouse(x, y) {
+            for (let i = this.elements.length - 1; i >= 0; i--) {
+                const el = this.elements[i];
+                if (el instanceof Point && el.isNear(x, y, 8)) return el;
+                if (el instanceof Line) {
+                    const A = el.p1, B = el.p2;
+                    const ax = x - A.x, ay = y - A.y;
+                    const bx = B.x - A.x, by = B.y - A.y;
+                    const len2 = bx * bx + by * by;
+                    if (len2 < 1e-12) continue;
+                    let t = (ax * bx + ay * by) / len2;
+                    if (el.type === 'segment') t = Math.max(0, Math.min(1, t));
+                    const projX = A.x + t * bx;
+                    const projY = A.y + t * by;
+                    if (Math.hypot(projX - x, projY - y) < 8) return el;
+                }
+                if (el instanceof Circle) {
+                    const d = Math.hypot(x - el.center.x, y - el.center.y);
+                    if (Math.abs(d - el.radius) < 8) return el;
+                }
+            }
+            return null;
         }
 
         saveState() {
@@ -360,7 +390,6 @@
         loadState(state) {
             const pointMap = new Map();
             this.elements = [];
-
             state.forEach(item => {
                 if (item.type === 'Point') {
                     const p = new Point(item.x, item.y, item.id);
@@ -387,70 +416,45 @@
             this.render();
         }
 
-        getMouse(e) {
-            const rect = this.cvs.getBoundingClientRect();
-            const scaleX = this.cvs.width / rect.width;
-            const scaleY = this.cvs.height / rect.height;
-            return {
-                x: (e.clientX - rect.left) * scaleX,
-                y: (e.clientY - rect.top) * scaleY
-            };
-        }
-
-        // ========== 只吸附真正的点 ==========
-        getSnapPoint(x, y) {
-            let bestDist = this.snapTol;
-            let bestPoint = null;
-
-            for (let el of this.elements) {
-                if (el instanceof Point) {
-                    const d = Math.hypot(el.x - x, el.y - y);
-                    if (d < bestDist) {
-                        bestDist = d;
-                        bestPoint = el;      // 只返回真正的点对象
-                    }
-                }
-            }
-            return bestPoint;
-        }
-
-        // 获取鼠标下的实体
-        getElementUnderMouse(x, y) {
-            for (let i = this.elements.length - 1; i >= 0; i--) {
-                const el = this.elements[i];
-                if (el instanceof Point && el.isNear(x, y, 8)) return el;
-                if (el instanceof Line) {
-                    const A = el.p1, B = el.p2;
-                    const ax = x - A.x, ay = y - A.y;
-                    const bx = B.x - A.x, by = B.y - A.y;
-                    const len2 = bx * bx + by * by;
-                    if (len2 < 1e-12) continue;
-                    let t = (ax * bx + ay * by) / len2;
-                    if (el.type === 'segment') t = Math.max(0, Math.min(1, t));
-                    const projX = A.x + t * bx;
-                    const projY = A.y + t * by;
-                    if (Math.hypot(projX - x, projY - y) < 8) return el;
-                }
-                if (el instanceof Circle) {
-                    const d = Math.hypot(x - el.center.x, y - el.center.y);
-                    if (Math.abs(d - el.radius) < 8) return el;
-                }
-            }
-            return null;
-        }
-
         bindEvents() {
+            // 工具按钮切换
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.tool = btn.dataset.tool;
+                    this.temp = null;
+                    this.intersectCache = { a: null, b: null };
+                    this.updateStatus(`切换到 ${toolNames[this.tool] || this.tool}`);
+                    this.render();
+                });
+            });
+
+            // 鼠标按下事件
             this.cvs.addEventListener('mousedown', (e) => {
                 if (e.button !== 0) return;
+                
                 const mouse = this.getMouse(e);
                 
-                // 只吸附真正的点
                 const snapPoint = this.getSnapPoint(mouse.x, mouse.y);
                 const useX = snapPoint ? snapPoint.x : mouse.x;
                 const useY = snapPoint ? snapPoint.y : mouse.y;
                 const snapMsg = snapPoint ? '吸附到点' : '';
 
                 const targetElem = this.getElementUnderMouse(useX, useY);
+
+                if (this.tool === 'delete') {
+                    if (targetElem) {
+                        const index = this.elements.indexOf(targetElem);
+                        if (index !== -1) {
+                            this.elements.splice(index, 1);
+                            this.saveState();
+                            this.updateStatus(`已删除`);
+                        }
+                    }
+                    this.render();
+                    return;
+                }
 
                 switch(this.tool) {
                     case 'point':
@@ -483,7 +487,6 @@
                             this.temp = { center: center, radius: 0 };
                             this.updateStatus(`${snapMsg} 圆心，再点半径`);
                         } else {
-                            // 半径也支持吸附到点
                             const r = this.temp.center.distanceTo({ x: useX, y: useY });
                             if (r > 1) {
                                 this.elements.push(new Circle(this.temp.center, r));
@@ -522,18 +525,16 @@
                 this.render();
             });
 
+            // 鼠标移动事件
             this.cvs.addEventListener('mousemove', (e) => {
                 const mouse = this.getMouse(e);
-                
-                // 只吸附真正的点
                 this.snapPoint = this.getSnapPoint(mouse.x, mouse.y);
                 
-                // 预览用坐标
                 const previewSnap = this.getSnapPoint(mouse.x, mouse.y);
                 const previewX = previewSnap ? previewSnap.x : mouse.x;
                 const previewY = previewSnap ? previewSnap.y : mouse.y;
 
-                if (this.temp) {
+                if (this.temp && this.tool !== 'delete') {
                     if (this.temp.p2) {
                         this.temp.p2.x = previewX;
                         this.temp.p2.y = previewY;
@@ -550,19 +551,7 @@
                 this.render();
             });
 
-            document.querySelectorAll('.tool-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    this.tool = btn.dataset.tool;
-                    this.temp = null;
-                    this.intersectCache = { a: null, b: null };
-                    
-                    this.updateStatus(`切换到 ${toolNames[this.tool] || this.tool}`);
-                    this.render();
-                });
-            });
-
+            // 其他按钮事件
             document.getElementById('undo-btn').addEventListener('click', () => this.undo());
             document.getElementById('redo-btn').addEventListener('click', () => this.redo());
             document.getElementById('clear-btn').addEventListener('click', () => {
@@ -583,6 +572,7 @@
                 this.updateStatus('图片已保存');
             });
 
+            // 键盘快捷键
             document.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.key === 'z') {
                     e.preventDefault();
@@ -679,7 +669,7 @@
         render() {
             this.ctx.clearRect(0, 0, this.cvs.width, this.cvs.height);
 
-            // 暗色网格
+            // 绘制网格
             this.ctx.beginPath();
             this.ctx.strokeStyle = '#2a323c';
             this.ctx.lineWidth = 0.5;
@@ -696,8 +686,8 @@
             // 绘制所有元素
             this.elements.forEach(el => el.draw(this.ctx));
 
-            // 绘制吸附提示（只对真正的点）
-            if (this.snapPoint) {
+            // 绘制吸附提示
+            if (this.snapPoint && this.tool !== 'delete') {
                 this.ctx.beginPath();
                 this.ctx.arc(this.snapPoint.x, this.snapPoint.y, 12, 0, 2*Math.PI);
                 this.ctx.strokeStyle = '#ffd966';
@@ -705,7 +695,6 @@
                 this.ctx.setLineDash([5, 3]);
                 this.ctx.stroke();
                 
-                // 内圈
                 this.ctx.beginPath();
                 this.ctx.arc(this.snapPoint.x, this.snapPoint.y, 5, 0, 2*Math.PI);
                 this.ctx.strokeStyle = '#ffd966';
@@ -716,8 +705,8 @@
                 this.ctx.setLineDash([]);
             }
 
-            // 临时预览
-            if (this.temp) {
+            // 绘制临时预览
+            if (this.temp && this.tool !== 'delete') {
                 this.ctx.beginPath();
                 this.ctx.strokeStyle = '#ffd966';
                 this.ctx.lineWidth = 2.5;
@@ -734,7 +723,7 @@
                 this.ctx.setLineDash([]);
             }
 
-            // 交点选择提示
+            // 绘制交点选择提示
             if (this.tool === 'intersection' && this.intersectCache.a) {
                 this.ctx.beginPath();
                 this.ctx.strokeStyle = '#ff8a7a';
