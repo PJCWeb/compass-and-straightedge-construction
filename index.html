@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>尺规作题工具</title>
+    <title>尺规作图工具</title>
     <style>
         * {
             margin: 0;
@@ -16,7 +16,7 @@
             color: #e0e0e0;
         }
         .container {
-            max-width: 1280px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -42,6 +42,7 @@
         .header-controls {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
         .header-controls button {
             padding: 8px 18px;
@@ -63,6 +64,7 @@
             display: flex;
             gap: 20px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         .toolbar {
             background-color: #252b33;
@@ -71,6 +73,7 @@
             box-shadow: 0 6px 12px rgba(0,0,0,0.2);
             min-width: 170px;
             border: 1px solid #3a4350;
+            height: fit-content;
         }
         .toolbar h3 {
             margin-bottom: 16px;
@@ -114,6 +117,38 @@
             display: flex;
             flex-direction: column;
             border: 1px solid #3a4350;
+            min-width: 500px;
+        }
+        .canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 0 8px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .canvas-header label {
+            color: #ffd966;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .canvas-header input[type="range"] {
+            width: 140px;
+            cursor: pointer;
+            background: #3a4a5c;
+            height: 6px;
+            border-radius: 10px;
+            accent-color: #ffd966;
+        }
+        .canvas-header span {
+            background: #1e242b;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-family: monospace;
+            border: 1px solid #44515f;
         }
         .canvas-wrapper {
             position: relative;
@@ -123,13 +158,17 @@
             border-radius: 12px;
             background-color: #1e242b;
             border: 1px solid #44515f;
+            cursor: grab;
+        }
+        .canvas-wrapper.pan-active {
+            cursor: grabbing;
         }
         #canvas {
             display: block;
             width: 100%;
             height: 100%;
             background-color: #1e242b;
-            cursor: crosshair;
+            image-rendering: crisp-edges;
         }
         .footer {
             background-color: #252b33;
@@ -152,30 +191,44 @@
             font-family: monospace;
             text-align: center;
         }
+        .coords {
+            margin-left: 15px;
+            color: #a0b8cc;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <header class="header">
-        <h1>尺规作题工具</h1>
+        <h1>📐 尺规作图工具</h1>
         <div class="header-controls">
             <button id="undo-btn">↩ 撤销</button>
             <button id="redo-btn">↪ 重做</button>
             <button id="clear-btn">🗑 清空</button>
             <button id="save-btn">💾 保存PNG</button>
+            <button id="reset-view-btn">⟲ 重置视图</button>
         </div>
     </header>
     <div class="main-content">
         <div class="toolbar">
             <h3>⚒️ 工具</h3>
-            <button class="tool-btn active" data-tool="point">⚫ 点</button>
+            <button class="tool-btn" data-tool="point">⚫ 点</button>
             <button class="tool-btn" data-tool="segment">📏 线段</button>
             <button class="tool-btn" data-tool="line">📈 直线</button>
             <button class="tool-btn" data-tool="circle">⭕ 圆</button>
             <button class="tool-btn" data-tool="intersection">✖ 交点</button>
+            <button class="tool-btn" data-tool="pan">🖐️ 移动视图</button>
             <button class="tool-btn" data-tool="delete">🗑️ 删除</button>
         </div>
         <div class="canvas-container">
+            <div class="canvas-header">
+                <label>
+                    🔍 缩放 <input type="range" id="zoomRange" min="0.2" max="3.0" step="0.05" value="1.0">
+                </label>
+                <span id="zoomValue">1.00x</span>
+                <span class="coords" id="mouseCoords">📌 0, 0</span>
+            </div>
             <div class="canvas-wrapper" id="canvasWrapper">
                 <canvas id="canvas" width="1200" height="800"></canvas>
             </div>
@@ -196,6 +249,7 @@
         'line': '直线',
         'circle': '圆',
         'intersection': '交点',
+        'pan': '移动视图',
         'delete': '删除'
     };
 
@@ -205,9 +259,10 @@
             this.y = y;
             this.id = id || `p_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
         }
-        draw(ctx) {
+        draw(ctx, transform) {
+            let { x, y } = transform.apply(this.x, this.y);
             ctx.beginPath();
-            ctx.arc(this.x, this.y, 5, 0, 2*Math.PI);
+            ctx.arc(x, y, 5, 0, 2*Math.PI);
             ctx.fillStyle = '#ffd966';
             ctx.fill();
             ctx.strokeStyle = '#ffffff';
@@ -229,14 +284,16 @@
             this.type = type;
             this.id = id || `l_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
         }
-        draw(ctx) {
+        draw(ctx, transform) {
+            let p1 = transform.apply(this.p1.x, this.p1.y);
+            let p2 = transform.apply(this.p2.x, this.p2.y);
             ctx.beginPath();
             if (this.type === 'segment') {
-                ctx.moveTo(this.p1.x, this.p1.y);
-                ctx.lineTo(this.p2.x, this.p2.y);
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
             } else {
-                const dx = this.p2.x - this.p1.x;
-                const dy = this.p2.y - this.p1.y;
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
                 const len = Math.hypot(dx, dy);
                 if (len < 1e-9) return;
                 
@@ -244,8 +301,8 @@
                 const ux = dx / len;
                 const uy = dy / len;
                 
-                ctx.moveTo(this.p1.x - ux * canvasSize, this.p1.y - uy * canvasSize);
-                ctx.lineTo(this.p1.x + ux * canvasSize, this.p1.y + uy * canvasSize);
+                ctx.moveTo(p1.x - ux * canvasSize, p1.y - uy * canvasSize);
+                ctx.lineTo(p1.x + ux * canvasSize, p1.y + uy * canvasSize);
             }
             ctx.strokeStyle = '#7a8b9f';
             ctx.lineWidth = 2.2;
@@ -259,12 +316,41 @@
             this.radius = radius;
             this.id = id || `c_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
         }
-        draw(ctx) {
+        draw(ctx, transform) {
+            let center = transform.apply(this.center.x, this.center.y);
+            let rPoint = transform.apply(this.center.x + this.radius, this.center.y);
+            let transformedR = Math.hypot(rPoint.x - center.x, rPoint.y - center.y);
+            
             ctx.beginPath();
-            ctx.arc(this.center.x, this.center.y, this.radius, 0, 2*Math.PI);
+            ctx.arc(center.x, center.y, transformedR, 0, 2*Math.PI);
             ctx.strokeStyle = '#7a8b9f';
             ctx.lineWidth = 2.2;
             ctx.stroke();
+        }
+    }
+
+    class ViewTransform {
+        constructor() {
+            this.scale = 1.0;
+            this.offsetX = 0;
+            this.offsetY = 0;
+        }
+        apply(x, y) {
+            return {
+                x: x * this.scale + this.offsetX,
+                y: y * this.scale + this.offsetY
+            };
+        }
+        inverse(canvasX, canvasY) {
+            return {
+                x: (canvasX - this.offsetX) / this.scale,
+                y: (canvasY - this.offsetY) / this.scale
+            };
+        }
+        reset() {
+            this.scale = 1.0;
+            this.offsetX = 0;
+            this.offsetY = 0;
         }
     }
 
@@ -282,6 +368,16 @@
             this.snapPoint = null;
             this.intersectCache = { a: null, b: null };
             
+            this.view = new ViewTransform();
+            
+            this.isPanning = false;
+            this.lastPanPoint = { x: 0, y: 0 };
+            
+            this.zoomRange = document.getElementById('zoomRange');
+            this.zoomSpan = document.getElementById('zoomValue');
+            
+            this.pixelRatio = window.devicePixelRatio || 1;
+            
             this.init();
         }
 
@@ -289,14 +385,18 @@
             this.bindEvents();
             this.saveInitialState();
             this.render();
-            this.updateStatus('👆 选工具开始');
+            this.updateStatus('选工具开始');
+            
+            window.addEventListener('resize', () => {
+                this.render();
+            });
         }
 
         updateStatus(msg) {
             statusEl.textContent = `👉 ${msg}`;
         }
 
-        getMouse(e) {
+        getMouseCanvas(e) {
             const rect = this.cvs.getBoundingClientRect();
             const scaleX = this.cvs.width / rect.width;
             const scaleY = this.cvs.height / rect.height;
@@ -307,7 +407,12 @@
             };
         }
 
-        getSnapPoint(x, y) {
+        getMouseLogical(e) {
+            const canvasPt = this.getMouseCanvas(e);
+            return this.view.inverse(canvasPt.x, canvasPt.y);
+        }
+
+        getSnapPointLogical(x, y) {
             let bestDist = this.snapTol;
             let bestPoint = null;
             for (let el of this.elements) {
@@ -322,7 +427,7 @@
             return bestPoint;
         }
 
-        getElementUnderMouse(x, y) {
+        getElementUnderMouseLogical(x, y) {
             for (let i = this.elements.length - 1; i >= 0; i--) {
                 const el = this.elements[i];
                 if (el instanceof Point && el.isNear(x, y, 8)) return el;
@@ -416,8 +521,12 @@
             this.render();
         }
 
+        updateZoomDisplay() {
+            this.zoomSpan.textContent = this.view.scale.toFixed(2) + 'x';
+            this.zoomRange.value = this.view.scale;
+        }
+
         bindEvents() {
-            // 工具按钮切换
             document.querySelectorAll('.tool-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
@@ -430,22 +539,74 @@
                 });
             });
 
-            // 鼠标按下事件
+            this.zoomRange.addEventListener('input', (e) => {
+                this.view.scale = parseFloat(e.target.value);
+                this.updateZoomDisplay();
+                this.render();
+            });
+
+            document.getElementById('reset-view-btn').addEventListener('click', () => {
+                this.view.reset();
+                this.updateZoomDisplay();
+                this.render();
+                this.updateStatus('视图重置');
+            });
+
+            this.cvs.addEventListener('mousemove', (e) => {
+                const logical = this.getMouseLogical(e);
+                document.getElementById('mouseCoords').innerHTML = `📌 ${logical.x.toFixed(1)}, ${logical.y.toFixed(1)}`;
+
+                this.snapPoint = this.getSnapPointLogical(logical.x, logical.y);
+                const snapLogical = this.snapPoint ? { x: this.snapPoint.x, y: this.snapPoint.y } : logical;
+
+                if (this.isPanning && this.tool === 'pan') {
+                    const canvasPt = this.getMouseCanvas(e);
+                    const dx = canvasPt.x - this.lastPanPoint.x;
+                    const dy = canvasPt.y - this.lastPanPoint.y;
+                    this.view.offsetX += dx;
+                    this.view.offsetY += dy;
+                    this.lastPanPoint = canvasPt;
+                    this.render();
+                } else if (this.temp && this.tool !== 'delete' && this.tool !== 'pan') {
+                    if (this.temp.p2) {
+                        this.temp.p2.x = snapLogical.x;
+                        this.temp.p2.y = snapLogical.y;
+                    } else if (this.temp.center) {
+                        this.temp.radius = this.temp.center.distanceTo({ x: snapLogical.x, y: snapLogical.y });
+                    }
+                    this.render();
+                } else {
+                    this.render();
+                }
+            });
+
+            this.cvs.addEventListener('mouseleave', () => {
+                this.snapPoint = null;
+                this.render();
+            });
+
             this.cvs.addEventListener('mousedown', (e) => {
                 if (e.button !== 0) return;
                 
-                const mouse = this.getMouse(e);
+                const logical = this.getMouseLogical(e);
+                const canvasPt = this.getMouseCanvas(e);
                 
-                const snapPoint = this.getSnapPoint(mouse.x, mouse.y);
-                const useX = snapPoint ? snapPoint.x : mouse.x;
-                const useY = snapPoint ? snapPoint.y : mouse.y;
+                const snapPoint = this.getSnapPointLogical(logical.x, logical.y);
+                const useLogical = snapPoint ? { x: snapPoint.x, y: snapPoint.y } : logical;
                 const snapMsg = snapPoint ? '吸附到点' : '';
 
-                const targetElem = this.getElementUnderMouse(useX, useY);
+                if (this.tool === 'pan') {
+                    this.isPanning = true;
+                    this.lastPanPoint = canvasPt;
+                    this.wrapper.classList.add('pan-active');
+                    e.preventDefault();
+                    return;
+                }
 
                 if (this.tool === 'delete') {
-                    if (targetElem) {
-                        const index = this.elements.indexOf(targetElem);
+                    const target = this.getElementUnderMouseLogical(logical.x, logical.y);
+                    if (target) {
+                        const index = this.elements.indexOf(target);
                         if (index !== -1) {
                             this.elements.splice(index, 1);
                             this.saveState();
@@ -456,9 +617,34 @@
                     return;
                 }
 
+                if (this.tool === 'intersection') {
+                    const target = this.getElementUnderMouseLogical(logical.x, logical.y);
+                    if (!this.intersectCache.a) {
+                        this.intersectCache.a = target;
+                        if (target) {
+                            const type = target instanceof Line ? '线' : '圆';
+                            this.updateStatus(`已选第一个${type}，再选第二个`);
+                        } else {
+                            this.updateStatus(`请点击一个图形`);
+                        }
+                    } else if (!this.intersectCache.b && target && target !== this.intersectCache.a) {
+                        this.intersectCache.b = target;
+                        this.computeAndAddIntersection(this.intersectCache.a, this.intersectCache.b);
+                        this.intersectCache.a = null;
+                        this.intersectCache.b = null;
+                    } else {
+                        if (!target) {
+                            this.intersectCache.a = null;
+                            this.updateStatus(`取消选择`);
+                        }
+                    }
+                    this.render();
+                    return;
+                }
+
                 switch(this.tool) {
                     case 'point':
-                        this.elements.push(new Point(useX, useY));
+                        this.elements.push(new Point(useLogical.x, useLogical.y));
                         this.saveState();
                         this.updateStatus(`${snapMsg} 添加点`);
                         break;
@@ -466,12 +652,12 @@
                     case 'segment':
                     case 'line':
                         if (!this.temp) {
-                            const p1 = new Point(useX, useY);
+                            const p1 = new Point(useLogical.x, useLogical.y);
                             this.elements.push(p1);
-                            this.temp = { p1: p1, p2: new Point(useX, useY) };
+                            this.temp = { p1: p1, p2: new Point(useLogical.x, useLogical.y) };
                             this.updateStatus(`${snapMsg} 第一个点`);
                         } else {
-                            const p2 = new Point(useX, useY);
+                            const p2 = new Point(useLogical.x, useLogical.y);
                             this.elements.push(p2);
                             this.elements.push(new Line(this.temp.p1, p2, this.tool));
                             this.temp = null;
@@ -482,12 +668,12 @@
                         
                     case 'circle':
                         if (!this.temp) {
-                            const center = new Point(useX, useY);
+                            const center = new Point(useLogical.x, useLogical.y);
                             this.elements.push(center);
                             this.temp = { center: center, radius: 0 };
                             this.updateStatus(`${snapMsg} 圆心，再点半径`);
                         } else {
-                            const r = this.temp.center.distanceTo({ x: useX, y: useY });
+                            const r = this.temp.center.distanceTo({ x: useLogical.x, y: useLogical.y });
                             if (r > 1) {
                                 this.elements.push(new Circle(this.temp.center, r));
                                 this.updateStatus(`${snapMsg} 圆完成 (r=${r.toFixed(1)})`);
@@ -498,64 +684,23 @@
                             this.saveState();
                         }
                         break;
-                        
-                    case 'intersection':
-                        if (!this.intersectCache.a) {
-                            this.intersectCache.a = targetElem;
-                            if (targetElem) {
-                                const type = targetElem instanceof Line ? '线' : '圆';
-                                this.updateStatus(`已选第一个${type}，再选第二个`);
-                            } else {
-                                this.updateStatus(`请点击一个图形`);
-                            }
-                        } else if (!this.intersectCache.b && targetElem && targetElem !== this.intersectCache.a) {
-                            this.intersectCache.b = targetElem;
-                            this.computeAndAddIntersection(this.intersectCache.a, this.intersectCache.b);
-                            this.intersectCache.a = null;
-                            this.intersectCache.b = null;
-                        } else {
-                            if (!targetElem) {
-                                this.intersectCache.a = null;
-                                this.updateStatus(`取消选择`);
-                            }
-                        }
-                        break;
                 }
-                
+
                 this.render();
             });
 
-            // 鼠标移动事件
-            this.cvs.addEventListener('mousemove', (e) => {
-                const mouse = this.getMouse(e);
-                this.snapPoint = this.getSnapPoint(mouse.x, mouse.y);
-                
-                const previewSnap = this.getSnapPoint(mouse.x, mouse.y);
-                const previewX = previewSnap ? previewSnap.x : mouse.x;
-                const previewY = previewSnap ? previewSnap.y : mouse.y;
-
-                if (this.temp && this.tool !== 'delete') {
-                    if (this.temp.p2) {
-                        this.temp.p2.x = previewX;
-                        this.temp.p2.y = previewY;
-                    } else if (this.temp.center) {
-                        this.temp.radius = this.temp.center.distanceTo({ x: previewX, y: previewY });
-                    }
+            window.addEventListener('mouseup', (e) => {
+                if (this.isPanning) {
+                    this.isPanning = false;
+                    this.wrapper.classList.remove('pan-active');
+                    this.render();
                 }
-                
-                this.render();
             });
 
-            this.cvs.addEventListener('mouseleave', () => {
-                this.snapPoint = null;
-                this.render();
-            });
-
-            // 其他按钮事件
             document.getElementById('undo-btn').addEventListener('click', () => this.undo());
             document.getElementById('redo-btn').addEventListener('click', () => this.redo());
             document.getElementById('clear-btn').addEventListener('click', () => {
-                if (confirm('清空？')) {
+                if (confirm('清空所有图形？')) {
                     this.elements = [];
                     this.temp = null;
                     this.intersectCache = { a: null, b: null };
@@ -572,7 +717,6 @@
                 this.updateStatus('图片已保存');
             });
 
-            // 键盘快捷键
             document.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.key === 'z') {
                     e.preventDefault();
@@ -667,63 +811,85 @@
         }
 
         render() {
-            this.ctx.clearRect(0, 0, this.cvs.width, this.cvs.height);
+            const rect = this.cvs.getBoundingClientRect();
+            const displayWidth = rect.width;
+            const displayHeight = rect.height;
+            
+            if (this.cvs.width !== displayWidth || this.cvs.height !== displayHeight) {
+                this.cvs.width = displayWidth;
+                this.cvs.height = displayHeight;
+            }
 
-            // 绘制网格
+            this.ctx.clearRect(0, 0, this.cvs.width, this.cvs.height);
+            this.ctx.save();
+
             this.ctx.beginPath();
             this.ctx.strokeStyle = '#2a323c';
             this.ctx.lineWidth = 0.5;
-            for (let i = 0; i < this.cvs.width; i += 30) {
-                this.ctx.moveTo(i, 0);
-                this.ctx.lineTo(i, this.cvs.height);
+
+            const topLeft = this.view.inverse(0, 0);
+            const bottomRight = this.view.inverse(this.cvs.width, this.cvs.height);
+            
+            const step = 30;
+            const startX = Math.floor(topLeft.x / step) * step;
+            const startY = Math.floor(topLeft.y / step) * step;
+
+            for (let x = startX; x <= bottomRight.x; x += step) {
+                let canvasP1 = this.view.apply(x, topLeft.y);
+                let canvasP2 = this.view.apply(x, bottomRight.y);
+                this.ctx.moveTo(canvasP1.x, canvasP1.y);
+                this.ctx.lineTo(canvasP2.x, canvasP2.y);
             }
-            for (let i = 0; i < this.cvs.height; i += 30) {
-                this.ctx.moveTo(0, i);
-                this.ctx.lineTo(this.cvs.width, i);
+            for (let y = startY; y <= bottomRight.y; y += step) {
+                let canvasP1 = this.view.apply(topLeft.x, y);
+                let canvasP2 = this.view.apply(bottomRight.x, y);
+                this.ctx.moveTo(canvasP1.x, canvasP1.y);
+                this.ctx.lineTo(canvasP2.x, canvasP2.y);
             }
             this.ctx.stroke();
 
-            // 绘制所有元素
-            this.elements.forEach(el => el.draw(this.ctx));
+            this.elements.forEach(el => el.draw(this.ctx, this.view));
 
-            // 绘制吸附提示
-            if (this.snapPoint && this.tool !== 'delete') {
+            if (this.snapPoint && this.tool !== 'delete' && this.tool !== 'pan') {
+                let sp = this.view.apply(this.snapPoint.x, this.snapPoint.y);
                 this.ctx.beginPath();
-                this.ctx.arc(this.snapPoint.x, this.snapPoint.y, 12, 0, 2*Math.PI);
+                this.ctx.arc(sp.x, sp.y, 12, 0, 2*Math.PI);
                 this.ctx.strokeStyle = '#ffd966';
                 this.ctx.lineWidth = 3;
                 this.ctx.setLineDash([5, 3]);
                 this.ctx.stroke();
                 
                 this.ctx.beginPath();
-                this.ctx.arc(this.snapPoint.x, this.snapPoint.y, 5, 0, 2*Math.PI);
+                this.ctx.arc(sp.x, sp.y, 5, 0, 2*Math.PI);
                 this.ctx.strokeStyle = '#ffd966';
                 this.ctx.lineWidth = 2;
                 this.ctx.setLineDash([]);
                 this.ctx.stroke();
-                
                 this.ctx.setLineDash([]);
             }
 
-            // 绘制临时预览
-            if (this.temp && this.tool !== 'delete') {
+            if (this.temp && this.tool !== 'delete' && this.tool !== 'pan') {
                 this.ctx.beginPath();
                 this.ctx.strokeStyle = '#ffd966';
                 this.ctx.lineWidth = 2.5;
                 this.ctx.setLineDash([8, 5]);
                 
                 if (this.temp.p1 && this.temp.p2) {
-                    this.ctx.moveTo(this.temp.p1.x, this.temp.p1.y);
-                    this.ctx.lineTo(this.temp.p2.x, this.temp.p2.y);
+                    let p1c = this.view.apply(this.temp.p1.x, this.temp.p1.y);
+                    let p2c = this.view.apply(this.temp.p2.x, this.temp.p2.y);
+                    this.ctx.moveTo(p1c.x, p1c.y);
+                    this.ctx.lineTo(p2c.x, p2c.y);
                     this.ctx.stroke();
                 } else if (this.temp.center && this.temp.radius > 0) {
-                    this.ctx.arc(this.temp.center.x, this.temp.center.y, this.temp.radius, 0, 2*Math.PI);
+                    let center = this.view.apply(this.temp.center.x, this.temp.center.y);
+                    let rPoint = this.view.apply(this.temp.center.x + this.temp.radius, this.temp.center.y);
+                    let rad = Math.hypot(rPoint.x - center.x, rPoint.y - center.y);
+                    this.ctx.arc(center.x, center.y, rad, 0, 2*Math.PI);
                     this.ctx.stroke();
                 }
                 this.ctx.setLineDash([]);
             }
 
-            // 绘制交点选择提示
             if (this.tool === 'intersection' && this.intersectCache.a) {
                 this.ctx.beginPath();
                 this.ctx.strokeStyle = '#ff8a7a';
@@ -732,14 +898,21 @@
                 
                 const a = this.intersectCache.a;
                 if (a instanceof Line) {
-                    this.ctx.moveTo(a.p1.x, a.p1.y);
-                    this.ctx.lineTo(a.p2.x, a.p2.y);
+                    let p1c = this.view.apply(a.p1.x, a.p1.y);
+                    let p2c = this.view.apply(a.p2.x, a.p2.y);
+                    this.ctx.moveTo(p1c.x, p1c.y);
+                    this.ctx.lineTo(p2c.x, p2c.y);
                 } else if (a instanceof Circle) {
-                    this.ctx.arc(a.center.x, a.center.y, a.radius, 0, 2*Math.PI);
+                    let center = this.view.apply(a.center.x, a.center.y);
+                    let rPoint = this.view.apply(a.center.x + a.radius, a.center.y);
+                    let rad = Math.hypot(rPoint.x - center.x, rPoint.y - center.y);
+                    this.ctx.arc(center.x, center.y, rad, 0, 2*Math.PI);
                 }
                 this.ctx.stroke();
                 this.ctx.setLineDash([]);
             }
+
+            this.ctx.restore();
         }
     }
 
