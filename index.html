@@ -108,7 +108,6 @@
             border-color: #ffd966;
             font-weight: 600;
         }
-        /* 角度弹窗 (自定义模态框) */
         .angle-modal {
             display: none;
             position: fixed;
@@ -284,7 +283,6 @@
             <button class="tool-btn" data-tool="intersection">✖ 交点</button>
             <button class="tool-btn" data-tool="pan">🖐️ 移动视图</button>
             <button class="tool-btn" data-tool="delete">🗑️ 删除</button>
-            <!-- 新增特殊角度工具 -->
             <button class="tool-btn" data-tool="angle">📐 特殊角度</button>
         </div>
         <div class="canvas-container">
@@ -305,7 +303,6 @@
     </footer>
 </div>
 
-<!-- 特殊角度选择弹窗 -->
 <div id="angleModal" class="angle-modal">
     <div class="modal-content">
         <h2>选择特殊角度</h2>
@@ -330,7 +327,7 @@
         'intersection': '交点',
         'pan': '移动视图',
         'delete': '删除',
-        'angle': '特殊角度'    // 新增工具名称
+        'angle': '特殊角度'
     };
 
     class Point {
@@ -388,6 +385,22 @@
             ctx.lineWidth = 2.2;
             ctx.stroke();
         }
+        
+        getNearestPointOnLine(x, y) {
+            const A = this.p1, B = this.p2;
+            const ax = x - A.x, ay = y - A.y;
+            const bx = B.x - A.x, by = B.y - A.y;
+            const len2 = bx * bx + by * by;
+            if (len2 < 1e-12) return { x: A.x, y: A.y };
+            let t = (ax * bx + ay * by) / len2;
+            if (this.type === 'segment') {
+                t = Math.max(0, Math.min(1, t));
+            }
+            return {
+                x: A.x + t * bx,
+                y: A.y + t * by
+            };
+        }
     }
 
     class Circle {
@@ -406,6 +419,18 @@
             ctx.strokeStyle = '#7a8b9f';
             ctx.lineWidth = 2.2;
             ctx.stroke();
+        }
+        
+        getNearestPointOnCircle(x, y) {
+            const dx = x - this.center.x;
+            const dy = y - this.center.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 1e-12) return { x: this.center.x + this.radius, y: this.center.y };
+            const scale = this.radius / dist;
+            return {
+                x: this.center.x + dx * scale,
+                y: this.center.y + dy * scale
+            };
         }
     }
 
@@ -446,12 +471,12 @@
             this.redoStack = [];
             this.snapTol = 15;
             this.snapPoint = null;
+            this.hoverElement = null;
             this.intersectCache = { a: null, b: null };
             
-            // 特殊角度相关状态
-            this.angleToolState = null; // 'selecting' 或 null
-            this.selectedAngle = null;   // 30,45,60
-            this.angleBaseLine = null;   // 用户点击的参考直线
+            this.angleToolState = null;
+            this.selectedAngle = null;
+            this.angleBaseLine = null;
             
             this.view = new ViewTransform();
             
@@ -468,6 +493,11 @@
 
         init() {
             this.bindEvents();
+            
+            const p1 = new Point(-200, 0);
+            const p2 = new Point(200, 0);
+            this.elements.push(p1, p2, new Line(p1, p2, 'line'));
+            
             this.saveInitialState();
             this.render();
             this.updateStatus('选工具开始');
@@ -497,9 +527,10 @@
             return this.view.inverse(canvasPt.x, canvasPt.y);
         }
 
-        getSnapPointLogical(x, y) {
+        getNearestExistingPoint(x, y) {
             let bestDist = this.snapTol;
             let bestPoint = null;
+            
             for (let el of this.elements) {
                 if (el instanceof Point) {
                     const d = Math.hypot(el.x - x, el.y - y);
@@ -511,8 +542,36 @@
             }
             return bestPoint;
         }
-
-        getElementUnderMouseLogical(x, y) {
+        getSnapPointForPointTool(x, y) {
+            let bestDist = this.snapTol;
+            let bestPoint = null;
+            
+            for (let el of this.elements) {
+                if (el instanceof Point) {
+                    const d = Math.hypot(el.x - x, el.y - y);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        bestPoint = { x: el.x, y: el.y };
+                    }
+                } else if (el instanceof Line) {
+                    const p = el.getNearestPointOnLine(x, y);
+                    const d = Math.hypot(p.x - x, p.y - y);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        bestPoint = p;
+                    }
+                } else if (el instanceof Circle) {
+                    const p = el.getNearestPointOnCircle(x, y);
+                    const d = Math.hypot(p.x - x, p.y - y);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        bestPoint = p;
+                    }
+                }
+            }
+            return bestPoint;
+        }
+        getHoverElement(x, y) {
             for (let i = this.elements.length - 1; i >= 0; i--) {
                 const el = this.elements[i];
                 if (el instanceof Point && el.isNear(x, y, 8)) return el;
@@ -603,7 +662,7 @@
             });
             this.temp = null;
             this.intersectCache = { a: null, b: null };
-            this.angleToolState = null;  // 重置角度状态
+            this.angleToolState = null;
             this.selectedAngle = null;
             this.angleBaseLine = null;
             this.render();
@@ -622,16 +681,16 @@
                     this.tool = btn.dataset.tool;
                     this.temp = null;
                     this.intersectCache = { a: null, b: null };
+                    this.hoverElement = null;
                     
-                    // 特殊工具：点击“特殊角度”时，重置相关状态并打开弹窗
                     if (this.tool === 'angle') {
-                        this.angleToolState = 'selecting';  // 等待选择角度
+                        this.angleToolState = 'selecting';
                         this.selectedAngle = null;
                         this.angleBaseLine = null;
                         this.showAngleModal();
-                        this.updateStatus('请选择角度 (30/45/60)');
+                        this.updateStatus('请选择角度');
                     } else {
-                        this.angleToolState = null;  // 退出角度模式
+                        this.angleToolState = null;
                         this.selectedAngle = null;
                         this.angleBaseLine = null;
                         this.updateStatus(`切换到 ${toolNames[this.tool] || this.tool}`);
@@ -640,7 +699,6 @@
                 });
             });
 
-            // 角度弹窗相关
             const modal = document.getElementById('angleModal');
             const closeBtn = document.getElementById('closeAngleModal');
             const angleOpts = document.querySelectorAll('.angle-option');
@@ -650,14 +708,12 @@
                     const angle = parseInt(e.target.dataset.angle, 10);
                     this.selectedAngle = angle;
                     modal.classList.remove('active');
-                    this.updateStatus(`已选 ${angle}°，请点击一条直线作为基准`);
-                    // 提示用户点击直线
+                    this.updateStatus(`已选 ${angle}°，请点击一条直线`);
                 });
             });
 
             closeBtn.addEventListener('click', () => {
                 modal.classList.remove('active');
-                // 退出角度工具模式，切回默认point
                 this.tool = 'point';
                 this.angleToolState = null;
                 this.selectedAngle = null;
@@ -683,7 +739,22 @@
                 const logical = this.getMouseLogical(e);
                 document.getElementById('mouseCoords').innerHTML = `📌 ${logical.x.toFixed(1)}, ${logical.y.toFixed(1)}`;
 
-                this.snapPoint = this.getSnapPointLogical(logical.x, logical.y);
+                if (this.tool === 'point') {
+                    this.snapPoint = this.getSnapPointForPointTool(logical.x, logical.y);
+                    this.hoverElement = null;
+                } else if (this.tool === 'circle' || this.tool === 'segment' || this.tool === 'line') {
+                    const existingPoint = this.getNearestExistingPoint(logical.x, logical.y);
+                    if (existingPoint) {
+                        this.snapPoint = { x: existingPoint.x, y: existingPoint.y, element: existingPoint };
+                    } else {
+                        this.snapPoint = null;
+                    }
+                    this.hoverElement = null;
+                } else {
+                    this.snapPoint = null;
+                    this.hoverElement = this.getHoverElement(logical.x, logical.y);
+                }
+
                 const snapLogical = this.snapPoint ? { x: this.snapPoint.x, y: this.snapPoint.y } : logical;
 
                 if (this.isPanning && this.tool === 'pan') {
@@ -709,6 +780,7 @@
 
             this.cvs.addEventListener('mouseleave', () => {
                 this.snapPoint = null;
+                this.hoverElement = null;
                 this.render();
             });
 
@@ -717,31 +789,22 @@
                 
                 const logical = this.getMouseLogical(e);
                 const canvasPt = this.getMouseCanvas(e);
-                
-                const snapPoint = this.getSnapPointLogical(logical.x, logical.y);
-                const useLogical = snapPoint ? { x: snapPoint.x, y: snapPoint.y } : logical;
-                const snapMsg = snapPoint ? '吸附到点' : '';
-
-                // 特殊角度处理：处于角度工具且已选好角度，等待点击直线
                 if (this.tool === 'angle' && this.selectedAngle) {
-                    const target = this.getElementUnderMouseLogical(logical.x, logical.y);
+                    const target = this.getHoverElement(logical.x, logical.y);
                     if (target && target instanceof Line) {
-                        // 以target为基准，在target的p1点处构造旋转角度直线
                         this.constructAngleLine(target, this.selectedAngle);
-                        // 完成后重置角度工具状态
                         this.selectedAngle = null;
                         this.angleToolState = null;
-                        this.tool = 'point';  // 切回点工具
+                        this.tool = 'point';
                         document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
                         document.querySelector('[data-tool="point"]').classList.add('active');
                         this.updateStatus('角度直线已添加，返回点工具');
                     } else {
-                        this.updateStatus('请点击一条直线作为基准');
+                        this.updateStatus('请点击一条直线');
                     }
                     this.render();
                     return;
                 }
-
                 if (this.tool === 'pan') {
                     this.isPanning = true;
                     this.lastPanPoint = canvasPt;
@@ -749,9 +812,8 @@
                     e.preventDefault();
                     return;
                 }
-
                 if (this.tool === 'delete') {
-                    const target = this.getElementUnderMouseLogical(logical.x, logical.y);
+                    const target = this.getHoverElement(logical.x, logical.y);
                     if (target) {
                         const index = this.elements.indexOf(target);
                         if (index !== -1) {
@@ -763,9 +825,8 @@
                     this.render();
                     return;
                 }
-
                 if (this.tool === 'intersection') {
-                    const target = this.getElementUnderMouseLogical(logical.x, logical.y);
+                    const target = this.getHoverElement(logical.x, logical.y);
                     if (!this.intersectCache.a) {
                         this.intersectCache.a = target;
                         if (target) {
@@ -791,44 +852,65 @@
 
                 switch(this.tool) {
                     case 'point':
-                        this.elements.push(new Point(useLogical.x, useLogical.y));
+                        const pointSnap = this.getSnapPointForPointTool(logical.x, logical.y);
+                        if (pointSnap) {
+                            this.elements.push(new Point(pointSnap.x, pointSnap.y));
+                            this.updateStatus('吸附到图形 添加点');
+                        } else {
+                            this.elements.push(new Point(logical.x, logical.y));
+                            this.updateStatus('添加点');
+                        }
                         this.saveState();
-                        this.updateStatus(`${snapMsg} 添加点`);
                         break;
                         
                     case 'segment':
                     case 'line':
                         if (!this.temp) {
-                            const p1 = new Point(useLogical.x, useLogical.y);
-                            this.elements.push(p1);
-                            this.temp = { p1: p1, p2: new Point(useLogical.x, useLogical.y) };
-                            this.updateStatus(`${snapMsg} 第一个点`);
+                            const p1 = this.getNearestExistingPoint(logical.x, logical.y);
+                            if (p1) {
+                                this.temp = { p1: p1, p2: new Point(logical.x, logical.y) };
+                                this.updateStatus('使用现有点作为第一个点，再点击现有点完成');
+                            } else {
+                                this.updateStatus('请点击一个现有点作为第一个点');
+                            }
                         } else {
-                            const p2 = new Point(useLogical.x, useLogical.y);
-                            this.elements.push(p2);
-                            this.elements.push(new Line(this.temp.p1, p2, this.tool));
-                            this.temp = null;
-                            this.saveState();
-                            this.updateStatus(`${snapMsg} 完成${this.tool === 'segment' ? '线段' : '直线'}`);
+                            const p2 = this.getNearestExistingPoint(logical.x, logical.y);
+                            if (p2) {
+                                this.elements.push(new Line(this.temp.p1, p2, this.tool));
+                                this.temp = null;
+                                this.saveState();
+                                this.updateStatus('线段/直线完成');
+                            } else {
+                                this.updateStatus('请点击一个现有点作为第二个点');
+                            }
                         }
                         break;
                         
                     case 'circle':
                         if (!this.temp) {
-                            const center = new Point(useLogical.x, useLogical.y);
-                            this.elements.push(center);
-                            this.temp = { center: center, radius: 0 };
-                            this.updateStatus(`${snapMsg} 圆心，再点半径`);
-                        } else {
-                            const r = this.temp.center.distanceTo({ x: useLogical.x, y: useLogical.y });
-                            if (r > 1) {
-                                this.elements.push(new Circle(this.temp.center, r));
-                                this.updateStatus(`${snapMsg} 圆完成 (r=${r.toFixed(1)})`);
+                            const centerPoint = this.getNearestExistingPoint(logical.x, logical.y);
+                            if (centerPoint) {
+                                this.temp = { center: centerPoint, radius: 0 };
+                                this.updateStatus('使用现有点作为圆心，再点击现有点确定半径');
                             } else {
-                                this.updateStatus(`半径太小，取消`);
+                                this.updateStatus('请点击一个现有点作为圆心');
                             }
-                            this.temp = null;
-                            this.saveState();
+                        } else {
+                         
+                            const radiusPoint = this.getNearestExistingPoint(logical.x, logical.y);
+                            if (radiusPoint) {
+                                const r = this.temp.center.distanceTo(radiusPoint);
+                                if (r > 1) {
+                                    this.elements.push(new Circle(this.temp.center, r));
+                                    this.updateStatus(`圆完成 (半径: ${r.toFixed(1)})`);
+                                } else {
+                                    this.updateStatus(`半径太小，取消`);
+                                }
+                                this.temp = null;
+                                this.saveState();
+                            } else {
+                                this.updateStatus('请点击一个现有点作为半径点');
+                            }
                         }
                         break;
                 }
@@ -879,28 +961,20 @@
             });
         }
 
-        // 显示弹窗
         showAngleModal() {
             const modal = document.getElementById('angleModal');
             modal.classList.add('active');
         }
 
-        // 根据基准直线和角度构造新直线 (在直线起点处旋转)
         constructAngleLine(baseLine, angleDeg) {
-            // 获取直线上的一点作为旋转中心（使用p1）
             const center = baseLine.p1;
             const dx = baseLine.p2.x - baseLine.p1.x;
             const dy = baseLine.p2.y - baseLine.p1.y;
             
-            // 计算原直线的方向角
             const baseAngle = Math.atan2(dy, dx);
             const rad = angleDeg * Math.PI / 180;
             
-            // 生成两条可能的直线：逆时针和顺时针旋转（为了提供选择，这里生成两条并让用户稍后选择？但为简化，我们先取逆时针方向）
-            // 也可以生成一条默认方向，或者添加两个方向。考虑到尺规习惯，生成两个点以供连接。
-            // 这里采用简单方案：生成逆时针旋转后的方向，并创建一个足够远的点来定义直线。
             const newAngle = baseAngle + rad;
-            // 取一个足够长的长度（比如200单位）来构造第二个点
             const length = 150; 
             const newDx = Math.cos(newAngle) * length;
             const newDy = Math.sin(newAngle) * length;
@@ -908,15 +982,10 @@
             const newX = center.x + newDx;
             const newY = center.y + newDy;
             
-            // 创建新点（远端点）并加入
             const farPoint = new Point(newX, newY);
             this.elements.push(farPoint);
-            // 创建直线
-            const newLine = new Line(center, farPoint, 'line'); // 使用直线类型
+            const newLine = new Line(center, farPoint, 'line');
             this.elements.push(newLine);
-            
-            // 为了完整，也可以同时生成顺时针方向的直线（注释掉以保持简洁）
-            // 但为了用户能获得完整的30°效果，可以同时生成两条？但可能太多。这里先只生成一条。
             
             this.saveState();
             this.updateStatus(`已创建 ${angleDeg}° 角直线`);
@@ -1043,7 +1112,7 @@
 
             this.elements.forEach(el => el.draw(this.ctx, this.view));
 
-            if (this.snapPoint && this.tool !== 'delete' && this.tool !== 'pan') {
+            if (this.tool === 'point' && this.snapPoint) {
                 let sp = this.view.apply(this.snapPoint.x, this.snapPoint.y);
                 this.ctx.beginPath();
                 this.ctx.arc(sp.x, sp.y, 12, 0, 2*Math.PI);
@@ -1060,7 +1129,79 @@
                 this.ctx.stroke();
                 this.ctx.setLineDash([]);
             }
+            if ((this.tool === 'circle' || this.tool === 'segment' || this.tool === 'line') && this.snapPoint) {
+                let sp = this.view.apply(this.snapPoint.x, this.snapPoint.y);
+                this.ctx.beginPath();
+                this.ctx.arc(sp.x, sp.y, 12, 0, 2*Math.PI);
+                this.ctx.strokeStyle = '#ffd966';
+                this.ctx.lineWidth = 3;
+                this.ctx.setLineDash([5, 3]);
+                this.ctx.stroke();
+                
+                this.ctx.beginPath();
+                this.ctx.arc(sp.x, sp.y, 5, 0, 2*Math.PI);
+                this.ctx.strokeStyle = '#ffd966';
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([]);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+            }
+            if (this.tool !== 'point' && this.tool !== 'circle' && this.tool !== 'segment' && this.tool !== 'line' && this.tool !== 'pan' && this.hoverElement) {
+                if (this.hoverElement instanceof Point) {
+                    let sp = this.view.apply(this.hoverElement.x, this.hoverElement.y);
+                    this.ctx.beginPath();
+                    this.ctx.arc(sp.x, sp.y, 12, 0, 2*Math.PI);
+                    this.ctx.strokeStyle = '#ffd966';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.setLineDash([5, 3]);
+                    this.ctx.stroke();
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(sp.x, sp.y, 5, 0, 2*Math.PI);
+                    this.ctx.strokeStyle = '#ffd966';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.setLineDash([]);
+                    this.ctx.stroke();
+                    this.ctx.setLineDash([]);
+                } else if (this.hoverElement instanceof Line) {
+                    let p1 = this.view.apply(this.hoverElement.p1.x, this.hoverElement.p1.y);
+                    let p2 = this.view.apply(this.hoverElement.p2.x, this.hoverElement.p2.y);
+                    this.ctx.beginPath();
+                    if (this.hoverElement.type === 'segment') {
+                        this.ctx.moveTo(p1.x, p1.y);
+                        this.ctx.lineTo(p2.x, p2.y);
+                    } else {
+                        const dx = p2.x - p1.x;
+                        const dy = p2.y - p1.y;
+                        const len = Math.hypot(dx, dy);
+                        if (len > 1e-9) {
+                            const ux = dx / len;
+                            const uy = dy / len;
+                            const canvasSize = 2000;
+                            this.ctx.moveTo(p1.x - ux * canvasSize, p1.y - uy * canvasSize);
+                            this.ctx.lineTo(p1.x + ux * canvasSize, p1.y + uy * canvasSize);
+                        }
+                    }
+                    this.ctx.strokeStyle = '#ffd966';
+                    this.ctx.lineWidth = 4;
+                    this.ctx.setLineDash([5, 3]);
+                    this.ctx.stroke();
+                    this.ctx.setLineDash([]);
+                } else if (this.hoverElement instanceof Circle) {
+                    let center = this.view.apply(this.hoverElement.center.x, this.hoverElement.center.y);
+                    let rPoint = this.view.apply(this.hoverElement.center.x + this.hoverElement.radius, this.hoverElement.center.y);
+                    let rad = Math.hypot(rPoint.x - center.x, rPoint.y - center.y);
+                    this.ctx.beginPath();
+                    this.ctx.arc(center.x, center.y, rad, 0, 2*Math.PI);
+                    this.ctx.strokeStyle = '#ffd966';
+                    this.ctx.lineWidth = 4;
+                    this.ctx.setLineDash([5, 3]);
+                    this.ctx.stroke();
+                    this.ctx.setLineDash([]);
+                }
+            }
 
+           
             if (this.temp && this.tool !== 'delete' && this.tool !== 'pan' && this.tool !== 'angle') {
                 this.ctx.beginPath();
                 this.ctx.strokeStyle = '#ffd966';
